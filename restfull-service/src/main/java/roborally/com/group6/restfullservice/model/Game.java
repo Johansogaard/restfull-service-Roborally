@@ -77,7 +77,7 @@ public class Game {
         System.out.println(readyreturn+" Act" + player);
         return readyreturn;
     }
-
+    public boolean start = false;
     public boolean readyProg =false;
     public boolean readyAct = false;
     private int readyCounterAct=0;

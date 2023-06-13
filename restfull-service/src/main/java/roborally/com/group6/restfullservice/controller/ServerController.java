@@ -1,21 +1,57 @@
 package roborally.com.group6.restfullservice.controller;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.springframework.web.bind.annotation.*;
 
 import roborally.com.group6.restfullservice.model.Game;
 
-import java.math.BigDecimal;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
 @RestController
-public class GameController {
+public class ServerController {
     ArrayList<Game> games = new ArrayList<>();
+    private final String gameSavePath ="src/main/resources/gamesavesonline";
     int currId = 1000;
+    @PostMapping("/game/{id}/savegame/{gamename}")
+    public void saveGame(@PathVariable String id,@PathVariable String gamename,  @RequestBody String gameInstance) {
+     Game exits = gameExist(id);
+     if (exits!=null)
+     {
+        saveStringToFile(gameInstance,gameSavePath+"/"+gamename+".json");
+     }
+    }
+
+    public void saveStringToFile(String content, String filePath) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+
+            FileWriter fileWriter = new FileWriter(filePath);
+            objectMapper.writeValue(fileWriter, content);
+            fileWriter.close();
+        } catch (IOException e) {
+            // Handle any potential IO exceptions here
+            e.printStackTrace();
+        }
+    }
+    @GetMapping("/game/files")
+    public String getGameStatusPost()
+    {
+        String files="";
+        File folder = new File(gameSavePath);
+        File[] listOfFiles = folder.listFiles();
+
+        for (File file : listOfFiles) {
+            if (file.isFile()) {
+               files = files+file.getName()+",";
+            }
+        }
+        return files;
+    }
     @GetMapping("/game/{id}/statpost/{player}")
     public String getGameStatusPost(@PathVariable final String id,@PathVariable final String player) {
         //der er noget galt her med status
@@ -42,7 +78,29 @@ public class GameController {
         }
         return "game dosent exist";
     }
+    @GetMapping("/game/{id}/players")
+    public String getGameStatusAct(@PathVariable final String id) {
+        //der er noget galt her med status
+        Game exists = gameExist(id);
+        if (exists != null) {
+            String toReturn = exists.players+","+exists.start;
+           return toReturn;
+        }
+        return null;
 
+    }
+    @PostMapping("/game/{id}/start")
+    //spring outomatecly bindes our parameters aoutomatecly to return value mayby
+    public void postStart(@PathVariable final String id,@RequestBody String start) {
+        Game exists = gameExist(id);
+        if (exists != null&&start.equals("true")) {
+            exists.start=true;
+        }
+        else if (exists != null&&start.equals("false"))
+        {
+            exists.start =false;
+        }
+    }
     @PostMapping("/game/{id}")
     //spring outomatecly bindes our parameters aoutomatecly to return value mayby
     public void postGameInstanceStartPhase(@PathVariable final String id,@RequestBody String gameInstance)
