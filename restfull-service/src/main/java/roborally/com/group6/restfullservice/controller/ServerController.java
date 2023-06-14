@@ -1,7 +1,7 @@
 package roborally.com.group6.restfullservice.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import roborally.com.group6.restfullservice.model.Game;
@@ -9,6 +9,9 @@ import roborally.com.group6.restfullservice.model.Game;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 
 @RestController
@@ -16,30 +19,48 @@ public class ServerController {
     ArrayList<Game> games = new ArrayList<>();
     private final String gameSavePath ="src/main/resources/gamesavesonline";
     int currId = 1000;
-    @PostMapping("/game/{id}/savegame/{gamename}")
-    public void saveGame(@PathVariable String id,@PathVariable String gamename,  @RequestBody String gameInstance) {
-     Game exits = gameExist(id);
-     if (exits!=null)
-     {
-        saveStringToFile(gameInstance,gameSavePath+"/"+gamename+".json");
-     }
+    @PostMapping("/game/savegame/{gamename}")
+    public void saveGame(@PathVariable String gamename,  @RequestBody String gameInstance) {
+
+        saveStringToFile(gameInstance,gamename+".json");
+
     }
 
-    public void saveStringToFile(String content, String filePath) {
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+    public ResponseEntity<Object> saveStringToFile(String content, String fileName) {
 
+        try {
+            // Create the folder if it doesn't exist
+            File folder = new File(gameSavePath);
+            if (!folder.exists()) {
+                folder.mkdirs();
+            }
+
+            // Write the game data to a file
+            String filePath = gameSavePath + "/" + fileName;
             FileWriter fileWriter = new FileWriter(filePath);
-            objectMapper.writeValue(fileWriter, content);
+            fileWriter.write(content);
             fileWriter.close();
+
+            return ResponseEntity.status(HttpStatus.CREATED).build(); // Return HTTP 201 Created for successful save
+        } catch (IOException e) {
+            // Handle any error that occurs during file writing
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build(); // Return HTTP 500 Internal Server Error for error during save
+        }
+    }
+    @GetMapping("/game/files/{name}")
+    public String getFileFromName(@PathVariable String name)
+    {
+        try {
+            byte[] fileBytes = Files.readAllBytes(Path.of(gameSavePath+"/"+name));
+            return new String(fileBytes, StandardCharsets.UTF_8);
         } catch (IOException e) {
             // Handle any potential IO exceptions here
             e.printStackTrace();
         }
+        return null;
     }
     @GetMapping("/game/files")
-    public String getGameStatusPost()
+    public String getFileNames()
     {
         String files="";
         File folder = new File(gameSavePath);
@@ -202,7 +223,7 @@ public class ServerController {
 
     }
     @GetMapping("/game/id/{maxPlayers}")
-    public String getId(@PathVariable final String maxPlayers){
+    public String createGame(@PathVariable final String maxPlayers){
        int id =currId;
        currId = currId+1;
         System.out.println(id);
